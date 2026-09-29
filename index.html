@@ -206,7 +206,8 @@ const PARTS={
     {id:'minigun',name:'Machine Gun',desc:'Brrrrrt! The fastest gun of all.',dmg:5,rate:11,speed:720,spread:.1,pellets:1,life:.8,energy:0,wt:22,cost:30,color:'#ffe08a',len:34},
     {id:'sniper',name:'Sniper',desc:'Shoots super far and goes through robots!',dmg:60,rate:.8,speed:1900,spread:0,pellets:1,life:.9,energy:0,wt:18,cost:50,color:'#eaf2ff',len:44,pierce:true},
     {id:'bazooka',name:'Bazooka',desc:'One giant rocket. KA-BOOM!',dmg:55,rate:.6,speed:340,spread:.02,pellets:1,life:2.4,energy:0,wt:30,cost:60,color:'#ff5a2e',len:26,splash:125,r:7},
-    {id:'swarm',name:'Swarm Rockets',desc:'Three little rockets that chase robots.',dmg:14,rate:1.1,speed:360,spread:.35,pellets:3,life:2.2,energy:0,wt:26,cost:70,color:'#ffa24a',len:18,splash:45,homing:4.2,r:4}
+    {id:'swarm',name:'Swarm Rockets',desc:'Three little rockets that chase robots.',dmg:14,rate:1.1,speed:360,spread:.35,pellets:3,life:2.2,energy:0,wt:26,cost:70,color:'#ffa24a',len:18,splash:45,homing:4.2,r:4},
+    {id:'railgun',name:'Rail Gun',desc:'Zaps straight through walls AND robots!',dmg:70,rate:.7,speed:2000,spread:0,pellets:1,life:1,energy:0,wt:30,cost:90,color:'#b8a4ff',len:36,pierce:true,thru:true}
   ],
   back:[
     {id:'none',name:'No Backpack',desc:'Nothing on your back.',wt:0,cost:0,ab:null},
@@ -461,7 +462,7 @@ function fire(w,side,pl){
   const mx=p.x+ca*w.len-sa*sideOff,my=p.y+sa*w.len+ca*sideOff;
   for(let i=0;i<w.pellets;i++){
     const a=p.aimA+(Math.random()-.5)*w.spread*2,sp=w.speed*(w.pellets>1?.85+Math.random()*.3:1);
-    G.bullets.push({x:mx,y:my,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,dmg:w.dmg,life:w.life,own:'p',col:w.color,kind:w.id,splash:w.splash,homing:w.homing,pierce:w.pierce,hit:w.pierce?new Set():null,r:w.r||3});
+    G.bullets.push({x:mx,y:my,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,dmg:w.dmg,life:w.life,own:'p',col:w.color,kind:w.id,splash:w.splash,homing:w.homing,pierce:w.pierce,thru:w.thru,hit:w.pierce?new Set():null,r:w.r||3});
   }
   G.parts.push({x:mx,y:my,vx:0,vy:0,life:.06,max:.06,col:w.color,size:w.id==='railgun'?14:8});
   if(w.id==='railgun'||w.id==='sniper'||w.id==='bazooka')G.shake=Math.max(G.shake,7);if(w.id==='shotgun')G.shake=Math.max(G.shake,3);
@@ -570,7 +571,8 @@ function update(dt){
       if(Math.random()<.5)G.parts.push({x:b.x,y:b.y,vx:0,vy:0,life:.3,max:.3,col:'rgba(180,180,180,.6)',size:3});}
     else if(b.kind==='bazooka'&&Math.random()<.7)G.parts.push({x:b.x,y:b.y,vx:0,vy:0,life:.4,max:.4,col:'rgba(190,190,190,.6)',size:5});
     b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
-    if(inWall(b.x,b.y)){b.life=0;if(b.splash)explode(b.x,b.y,b.splash,b.dmg);else burst(b.x,b.y,b.col,3,80,2);continue;}
+    if(b.thru){if(b.x<0||b.y<0||b.x>WORLD||b.y>WORLD)b.life=0;else if(inWall(b.x,b.y)&&Math.random()<.5)G.parts.push({x:b.x,y:b.y,vx:0,vy:0,life:.2,max:.2,col:'#d6c8ff',size:4});}
+    else if(inWall(b.x,b.y)){b.life=0;if(b.splash)explode(b.x,b.y,b.splash,b.dmg);else burst(b.x,b.y,b.col,3,80,2);continue;}
     if(b.own==='p'){
       for(const e of G.enemies){if(e.hp<=0||(b.hit&&b.hit.has(e)))continue;
         if(Math.hypot(e.x-b.x,e.y-b.y)<e.r+b.r){
@@ -694,7 +696,7 @@ function camera(){
 
 // ================= NETWORK (two players) =================
 let ROOM=null,NR=null,NET_ROLE=null,MODE='solo',GAME_CODE='',guestLastRun=null,lobbyTimer=0;
-const KINDS=['autocannon','shotgun','laser','rockets','minigun','sniper','bazooka','swarm'],TYPES=['drone','gunner','brute','warden'];
+const KINDS=['autocannon','shotgun','laser','rockets','minigun','sniper','bazooka','swarm','railgun'],TYPES=['drone','gunner','brute','warden'];
 const N=v=>{v=+v;return Number.isFinite(v)?v:0;};
 const R=v=>Math.round(v);
 function safeBuild(b){b=b&&typeof b==='object'?b:{};const pick=(cat,v,d)=>PARTS[cat].some(q=>q.id===v)?v:d;
@@ -880,7 +882,7 @@ function render(){
   }
   for(const b of G.remB){if(b.life<=0)continue;
     if(b.kind==='laser'){c.strokeStyle='#7fe6f2';c.lineWidth=3;c.beginPath();c.moveTo(b.x,b.y);c.lineTo(b.x-b.vx*.018,b.y-b.vy*.018);c.stroke();}
-    else if(b.kind==='sniper'){c.strokeStyle='#eaf2ff';c.lineWidth=3;c.beginPath();c.moveTo(b.x,b.y);c.lineTo(b.x-b.vx*.03,b.y-b.vy*.03);c.stroke();}
+    else if(b.kind==='sniper'||b.kind==='railgun'){c.strokeStyle=b.kind==='railgun'?'#b8a4ff':'#eaf2ff';c.lineWidth=3;c.beginPath();c.moveTo(b.x,b.y);c.lineTo(b.x-b.vx*.03,b.y-b.vy*.03);c.stroke();}
     else if(b.kind==='rockets'||b.kind==='bazooka'||b.kind==='swarm'){drawRocket(c,b.x,b.y,Math.atan2(b.vy,b.vx),b.kind);}
     else{c.fillStyle=b.kind==='shotgun'?'#ffb35c':'#ffd27a';c.beginPath();c.arc(b.x,b.y,3,0,7);c.fill();}}
   for(const b of G.netEB){c.fillStyle=b.big?'#ff4f5e':'#ff8a6a';c.beginPath();c.arc(b.x,b.y,b.big?6:4,0,7);c.fill();}
