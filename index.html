@@ -192,7 +192,9 @@ button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 const PARTS={
   legs:[
     {id:'strider',name:'Robot Legs',desc:'Walks on two feet. Good at everything.',hp:300,speed:170,cap:110,cost:0},
-    {id:'wisp',name:'Hover Jets',desc:'Floats and zooms super fast!',hp:220,speed:240,cap:95,cost:60}
+    {id:'wisp',name:'Hover Jets',desc:'Floats and zooms super fast!',hp:220,speed:240,cap:95,cost:60},
+    {id:'spider',name:'Spider Legs',desc:'Four legs that scuttle around fast and steady.',hp:330,speed:205,cap:120,cost:70},
+    {id:'bulwark',name:'Tank Tracks',desc:'Caterpillar tracks like a real tank. Slow but SUPER tough!',hp:480,speed:125,cap:160,cost:60}
   ],
   core:[
     {id:'scout',name:'Small Body',desc:'Little and light.',hp:220,wt:20,energy:100,regen:38,cost:0},
@@ -296,10 +298,18 @@ function drawMech(c,b,x,y,bodyA,aimA,t,s,moving,extra){
     c.strokeStyle='#39434b';c.lineWidth=5;c.beginPath();c.moveTo(0,-8);c.lineTo(ph,-16);c.moveTo(0,8);c.lineTo(-ph,16);c.stroke();
     c.fillStyle='#2e3840';rr(c,ph-10,-22,20,10,3);rr(c,-ph-10,12,20,10,3);
     c.fillStyle=dark;c.fillRect(ph+6,-22,4,10);c.fillRect(-ph+6,12,4,10);
+  }else if(b.legs==='spider'){
+    const ph=moving?t*13:0;c.lineCap='round';
+    for(const[sx,sy,o]of[[1,-1,0],[1,1,Math.PI],[-1,-1,Math.PI],[-1,1,0]]){
+      const sw=Math.sin(ph+o)*6,kx=sx*15+sw*.5,ky=sy*16,fx=sx*25+sw,fy=sy*25;
+      c.strokeStyle='#39434b';c.lineWidth=5;c.beginPath();c.moveTo(sx*6,sy*6);c.lineTo(kx,ky);c.lineTo(fx,fy);c.stroke();
+      c.fillStyle=dark;c.beginPath();c.arc(kx,ky,3.2,0,7);c.fill();c.fillStyle='#2e3840';c.beginPath();c.arc(fx,fy,4.5,0,7);c.fill();}
+    c.lineCap='butt';
   }else if(b.legs==='bulwark'){
-    c.fillStyle='#262e35';rr(c,-24,-26,48,13,3);rr(c,-24,13,48,13,3);
+    c.fillStyle='#1f262c';rr(c,-27,-28,54,15,5);rr(c,-27,13,54,15,5);
     c.fillStyle='#3d4851';const off=moving?(t*60)%7:0;
-    for(let i=-24+off;i<22;i+=7){c.fillRect(i,-26,2.5,13);c.fillRect(i,13,2.5,13);}
+    for(let i=-26+off;i<25;i+=7){c.fillRect(i,-28,2.5,15);c.fillRect(i,13,2.5,15);}
+    c.fillStyle='#57626b';for(const wx of[-18,-6,6,18]){c.beginPath();c.arc(wx,-20.5,3.2,0,7);c.arc(wx,20.5,3.2,0,7);c.fill();}
   }else{
     const p=.35+.2*Math.sin(t*8);
     const g=c.createRadialGradient(0,0,4,0,0,30);g.addColorStop(0,`rgba(95,208,224,${p})`);g.addColorStop(1,'rgba(95,208,224,0)');
@@ -365,7 +375,7 @@ function renderHangar(){
   P.innerHTML=PARTS[cat].map(p=>{
     const owned=save.owned.includes(p.id),eq=b[tab]===p.id;
     let tags=[];
-    if(cat==='legs')tags=[p.speed>200?'FAST':'MEDIUM SPEED'];
+    if(cat==='legs')tags=[p.speed>200?'FAST':p.speed<150?'SLOW BUT TOUGH':'MEDIUM SPEED'];
     if(cat==='core')tags=[p.hp>400?'SUPER TOUGH':p.hp<300?'LITTLE':'TOUGH'];
     if(cat==='weapon')tags=[p.rate>=4?'SHOOTS FAST':'BIG HITS'];
     if(cat==='back')tags=[];
